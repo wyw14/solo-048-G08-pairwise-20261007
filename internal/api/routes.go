@@ -22,6 +22,8 @@ func (a *App) Handler() http.Handler {
 		api.Post("/zones/{zoneID}/recovery", a.beginZoneRecovery)
 		api.Post("/zones/{zoneID}/recovery/connect", a.connectRecoveryStation)
 		api.Post("/zones/{zoneID}/recovery/proofs", a.recordRecoveryProofs)
+		api.Get("/zones/{zoneID}/recovery/assessment", a.getZoneRecoveryAssessment)
+		api.Get("/recovery/assessments", a.listRecoveryAssessments)
 		api.Get("/stations", a.listStations)
 		api.Post("/stations/{stationID}/exchangers/switch", a.beginExchangerSwitch)
 		api.Post("/stations/{stationID}/exchangers/flow", a.recordFlowReceipt)

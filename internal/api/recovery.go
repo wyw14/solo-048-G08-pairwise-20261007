@@ -44,7 +44,8 @@ func (a *App) connectRecoveryStation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"zone": zone, "readiness": a.ZoneRecovery.Readiness(zone.ID)})
+	assessment, _, _ := a.ZoneRecovery.LatestAssessment(zone.ID)
+	writeJSON(w, http.StatusOK, map[string]any{"zone": zone, "readiness": a.ZoneRecovery.Readiness(zone.ID), "assessment": assessment})
 }
 
 func (a *App) recordRecoveryProofs(w http.ResponseWriter, r *http.Request) {
@@ -75,5 +76,28 @@ func (a *App) recordRecoveryProofs(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"warmup": warmup, "pressure": pressure, "zone": zone})
+	assessment, _, _ := a.ZoneRecovery.LatestAssessment(zone.ID)
+	writeJSON(w, http.StatusOK, map[string]any{"warmup": warmup, "pressure": pressure, "zone": zone, "assessment": assessment})
+}
+
+// getZoneRecoveryAssessment returns the current recovery conclusion for one
+// zone, recomputing it against live state and persisting the result.
+func (a *App) getZoneRecoveryAssessment(w http.ResponseWriter, r *http.Request) {
+	assessment, err := a.ZoneRecovery.Assessment(chi.URLParam(r, "zoneID"))
+	if err != nil {
+		writeError(w, http.StatusConflict, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, assessment)
+}
+
+// listRecoveryAssessments returns the persisted conclusion of every zone. It
+// reads durable state only, so it stays available across restarts.
+func (a *App) listRecoveryAssessments(w http.ResponseWriter, _ *http.Request) {
+	assessments, err := a.ZoneRecovery.ListAssessments()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, assessments)
 }

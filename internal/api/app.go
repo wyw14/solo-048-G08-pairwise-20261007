@@ -61,6 +61,7 @@ type App struct {
 	StationCommands      *station.CommandService
 	Reconnector          *recovery.Reconnector
 	ZoneRecovery         *recovery.ZoneRecovery
+	RecoveryAssessments  *recovery.AssessmentStore
 	Manual               *station.ManualService
 	Maintenance          *station.MaintenanceService
 }
@@ -130,7 +131,12 @@ func NewApp(dataDirectory string) (*App, error) {
 	app.ExchangerSwitch = exchanger.NewSwitchService(stations, flowReceipts, primary)
 	app.Publisher = dispatch.NewPublisher(planner, targets, recorder)
 	app.Reconnector = recovery.NewReconnector(dispatchBuffer, stations, stationCommands, recorder)
-	app.ZoneRecovery = recovery.NewZoneRecovery(networkState, networkRegistry, warmup, pressure)
+	recoveryAssessments := recovery.NewAssessmentStore(dataDirectory)
+	app.RecoveryAssessments = recoveryAssessments
+	app.ZoneRecovery = recovery.NewZoneRecovery(
+		networkState, networkRegistry, topology, stations, warmup, pressure,
+		app.Latches, boundaries, recoveryAssessments,
+	)
 	if err := app.seed(); err != nil {
 		return nil, err
 	}
