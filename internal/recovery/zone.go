@@ -62,6 +62,12 @@ func (r *ZoneRecovery) evaluate(zoneID string) (network.Zone, error) {
 	return r.state.Activate(zoneID, zone.RecoveryRevision)
 }
 
+func (r *ZoneRecovery) Connected(zoneID, stationID string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.connected[zoneID][stationID]
+}
+
 func (r *ZoneRecovery) Readiness(zoneID string) map[string]map[string]bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()

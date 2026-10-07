@@ -61,6 +61,7 @@ type App struct {
 	StationCommands      *station.CommandService
 	Reconnector          *recovery.Reconnector
 	ZoneRecovery         *recovery.ZoneRecovery
+	RecoveryAssessor     *recovery.Assessor
 	Manual               *station.ManualService
 	Maintenance          *station.MaintenanceService
 }
@@ -106,6 +107,7 @@ func NewApp(dataDirectory string) (*App, error) {
 	warmup := exchanger.NewWarmupService(stations)
 	relief := valve.NewReliefService(2 * time.Millisecond)
 	boundaries := valve.NewBoundaryService()
+	latches := protection.NewLatchStore(snapshots)
 	isolationService := isolation.NewService(topology, networkState, relief, boundaries, recorder)
 	targets := station.NewTargetService(stations)
 	planner := dispatch.NewPlanner(targets)
@@ -119,7 +121,7 @@ func NewApp(dataDirectory string) (*App, error) {
 		ValveOperations: valveOperations, Relief: relief, Boundaries: boundaries, Primary: primary,
 		Telemetry: telemetry.NewSeries(128), FlowReceipts: flowReceipts,
 		Balancer: hydraulic.NewBalancer(0.28), LeakDetector: hydraulic.NewLeakDetector(),
-		Protection: protection.NewService(), Latches: protection.NewLatchStore(snapshots),
+		Protection: protection.NewService(), Latches: latches,
 		Frost: protection.NewFrostProtection(valveOperations), Circulation: circulation, Antifreeze: antifreeze,
 		Warmup: warmup, Isolation: isolationService, IsolationCoordinator: isolation.NewCoordinator(isolationService),
 		Targets: targets, Planner: planner, DispatchBuffer: dispatchBuffer, StationCommands: stationCommands,
@@ -131,6 +133,7 @@ func NewApp(dataDirectory string) (*App, error) {
 	app.Publisher = dispatch.NewPublisher(planner, targets, recorder)
 	app.Reconnector = recovery.NewReconnector(dispatchBuffer, stations, stationCommands, recorder)
 	app.ZoneRecovery = recovery.NewZoneRecovery(networkState, networkRegistry, warmup, pressure)
+	app.RecoveryAssessor = recovery.NewAssessor(networkState, networkRegistry, topology, app.ZoneRecovery, warmup, pressure, boundaries, latches, dataDirectory)
 	if err := app.seed(); err != nil {
 		return nil, err
 	}

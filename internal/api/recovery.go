@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -76,4 +77,35 @@ func (a *App) recordRecoveryProofs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"warmup": warmup, "pressure": pressure, "zone": zone})
+}
+
+func (a *App) assessZoneRecovery(w http.ResponseWriter, r *http.Request) {
+	assessment, err := a.RecoveryAssessor.Assess(chi.URLParam(r, "zoneID"))
+	if err != nil {
+		writeError(w, http.StatusConflict, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, assessment)
+}
+
+func (a *App) getZoneRecoveryAssessment(w http.ResponseWriter, r *http.Request) {
+	record, ok, err := a.RecoveryAssessor.Latest(chi.URLParam(r, "zoneID"))
+	if err != nil {
+		writeError(w, http.StatusConflict, err)
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, fmt.Errorf("no recovery assessment recorded for zone"))
+		return
+	}
+	writeJSON(w, http.StatusOK, record)
+}
+
+func (a *App) listRecoveryAssessments(w http.ResponseWriter, r *http.Request) {
+	records, err := a.RecoveryAssessor.List()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, records)
 }
